@@ -90,8 +90,7 @@ performPlants :: [(Coordinate, Plant)] -> [(Coordinate, Zombie)] -> [(Coordinate
 performPlants plants zombies = map (\plant -> performPlant plant zombies) plants
 
 performPlant :: (Coordinate, Plant) -> [(Coordinate, Zombie)] -> (Coordinate, Plant)
-performPlant plant zombies = reducePlantHp plant (length (filter (\each -> each == False) (map (\currentZombie -> (isZombieAbleToMove currentZombie plant)) zombies)))
-
+performPlant plant zombies = reducePlantHp plant (length (filter (\each -> each == True) (map (\currentZombie -> (shouldZombieAttack currentZombie plant)) zombies)))
 
 
 isGameOver :: GameModel -> Bool
@@ -111,10 +110,15 @@ vaultingCanJump (_, (Vaulting _ speed))
   | otherwise = False
 vaultingCanJump _ = False
 
+shouldZombieAttack :: (Coordinate, Zombie) -> (Coordinate, Plant) -> Bool
+shouldZombieAttack zombie@(zombieCoords, _) (plantCoords, _)
+  | (zombieCoords == plantCoords) && (isVaultingZombieW zombie) && (vaultingCanJump zombie) = False
+  | zombieCoords == plantCoords = True
+  | otherwise = False
+
 
 isZombieAbleToMove :: (Coordinate, Zombie) -> (Coordinate, Plant) -> Bool
 isZombieAbleToMove zombie@(zombieCoords, _) (plantCoords, _)
-  | (zombieCoords == plantCoords) && (isVaultingZombieW zombie) && (vaultingCanJump zombie) = True
   | zombieCoords == plantCoords = False
   | otherwise = True
 
