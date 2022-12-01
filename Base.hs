@@ -64,23 +64,23 @@ performZombieActions :: GameModel -> Maybe GameModel
 performZombieActions gm@(GameModel s [] zombies)
   | isGameOver gm = Nothing
   | otherwise = Just (GameModel s [] (map (\x -> moveZombie x) zombies))
-performZombieActions (GameModel s plants zombies) = Just (GameModel s (performPlants plants zombies) (performZombies (concat (map (\currentZombie -> map (\currentPlant -> isZombieAbleToMove currentZombie currentPlant) plants) zombies)) zombies))
+performZombieActions (GameModel s plants zombies) = Just (GameModel s (performPlants plants zombies) (performZombies (map (\currentZombie -> map (\currentPlant -> isZombieAbleToMove currentZombie currentPlant) plants) zombies) zombies))
 
 
-test_concat = (map (\currentZombie -> map (\currentPlant -> isZombieAbleToMove currentZombie currentPlant) test_plants) test_zombies)
-test_plants = [((a,b),c 10)|a<-[0,2,4],b<-[0,2,7,11],c<-[Sunflower,Peashooter,Walnut,CherryBomb]]
-test_zombies = [((a,b),c)|a<-[0,2,4],b<-[2,3,7,11],c<-[coneHead,basic,bucketHead,vaulting]]
-test_length (x:xs) = length x
 
---test_performZombies = performZombies test_concat test_zombies
 
-performZombies :: [Int] -> [(Coordinate, Zombie)] -> [(Coordinate, Zombie)]
+
+performZombies :: [[Int]] -> [(Coordinate, Zombie)] -> [(Coordinate, Zombie)]
 performZombies [] _ = []
-performZombies _ [] = []
-performZombies (cInt:rInts) (cZombie:rZombies)
-  | cInt == 3 = (moveZombie cZombie) : performZombies rInts rZombies
-  | cInt /= 0 = (moveVaulting cZombie cInt) : performZombies rInts rZombies
-  | otherwise = cZombie : performZombies rInts rZombies
+performZombies (cIntList:rIntLists) (cZombie:rZombies) = (performZombie cIntList cZombie) : performZombies rIntLists rZombies
+
+performZombie :: [Int] -> (Coordinate, Zombie) -> (Coordinate, Zombie)
+performZombie l zombie
+  | (filter (\x -> x == 0) l ) /= [] = zombie
+  | (filter (\x -> x == 1) l ) /= [] = moveVaulting zombie 1
+  | (filter (\x -> x == 2) l ) /= [] = moveVaulting zombie 2
+  | otherwise = moveZombie zombie
+
 
 performPlants :: [(Coordinate, Plant)] -> [(Coordinate, Zombie)] -> [(Coordinate, Plant)]
 performPlants plants zombies = map (\plant -> performPlant plant zombies) plants
@@ -142,17 +142,6 @@ reducePlantHp (c,(Peashooter hp)) amount = (c, (Peashooter (hp-amount)))
 reducePlantHp (c, (Sunflower hp)) amount = (c, (Sunflower (hp-amount)))
 reducePlantHp (c, (Walnut hp) ) amount = (c, (Walnut (hp-amount)))
 reducePlantHp (c, (CherryBomb hp)) amount = (c, (CherryBomb (hp-amount)))
-
-
-
-test_model = (GameModel 0 [((a,b),c 10)|a<-[0,2,4],b<-[0,2,7,11],c<-[Sunflower,Peashooter,Walnut,CherryBomb]] [((a,b),c)|a<-[0,2,4],b<-[2,3,7,11],c<-[coneHead,basic,bucketHead,vaulting]])
-
-
-test = performZombieActions (GameModel 0 [((a,b),c 10)|a<-[0,2,4],b<-[0,2,7,11],c<-[Sunflower,Peashooter,Walnut,CherryBomb]] [((a,b),c)|a<-[0,2,4],b<-[2,3,7,11],c<-[coneHead,basic,bucketHead,vaulting]])==Just (GameModel 0 [((0,0),Sunflower 10),((0,0),Peashooter 10),((0,0),Walnut 10),((0,0),CherryBomb 10),((0,2),Sunflower 7),((0,2),Peashooter 7),((0,2),Walnut 7),((0,2),CherryBomb 7),((0,7),Sunflower 7),((0,7),Peashooter 7),((0,7),Walnut 7),((0,7),CherryBomb 7),((0,11),Sunflower 7),((0,11),Peashooter 7),((0,11),Walnut 7),((0,11),CherryBomb 7),((2,0),Sunflower 10),((2,0),Peashooter 10),((2,0),Walnut 10),((2,0),CherryBomb 10),((2,2),Sunflower 7),((2,2),Peashooter 7),((2,2),Walnut 7),((2,2),CherryBomb 7),((2,7),Sunflower 7),((2,7),Peashooter 7),((2,7),Walnut 7),((2,7),CherryBomb 7),((2,11),Sunflower 7),((2,11),Peashooter 7),((2,11),Walnut 7),((2,11),CherryBomb 7),((4,0),Sunflower 10),((4,0),Peashooter 10),((4,0),Walnut 10),((4,0),CherryBomb 10),((4,2),Sunflower 7),((4,2),Peashooter 7),((4,2),Walnut 7),((4,2),CherryBomb 7),((4,7),Sunflower 7),((4,7),Peashooter 7),((4,7),Walnut 7),((4,7),CherryBomb 7),((4,11),Sunflower 7),((4,11),Peashooter 7),((4,11),Walnut 7),((4,11),CherryBomb 7)] [((0,2),Conehead 10 1),((0,2),Basic 5 1),((0,2),Buckethead 20 1),((0,1),Vaulting 7 1),((0,2),Conehead 10 1),((0,2),Basic 5 1),((0,2),Buckethead 20 1),((0,1),Vaulting 7 1),((0,7),Conehead 10 1),((0,7),Basic 5 1),((0,7),Buckethead 20 1),((0,6),Vaulting 7 1),((0,11),Conehead 10 1),((0,11),Basic 5 1),((0,11),Buckethead 20 1),((0,10),Vaulting 7 1),((2,2),Conehead 10 1),((2,2),Basic 5 1),((2,2),Buckethead 20 1),((2,1),Vaulting 7 1),((2,2),Conehead 10 1),((2,2),Basic 5 1),((2,2),Buckethead 20 1),((2,1),Vaulting 7 1),((2,7),Conehead 10 1),((2,7),Basic 5 1),((2,7),Buckethead 20 1),((2,6),Vaulting 7 1),((2,11),Conehead 10 1),((2,11),Basic 5 1),((2,11),Buckethead 20 1),((2,10),Vaulting 7 1),((4,2),Conehead 10 1),((4,2),Basic 5 1),((4,2),Buckethead 20 1),((4,1),Vaulting 7 1),((4,2),Conehead 10 1),((4,2),Basic 5 1),((4,2),Buckethead 20 1),((4,1),Vaulting 7 1),((4,7),Conehead 10 1),((4,7),Basic 5 1),((4,7),Buckethead 20 1),((4,6),Vaulting 7 1),((4,11),Conehead 10 1),((4,11),Basic 5 1),((4,11),Buckethead 20 1),((4,10),Vaulting 7 1)])
-
-
-test_ = performZombieActions test_model
-
 
 
 
