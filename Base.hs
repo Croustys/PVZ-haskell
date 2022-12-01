@@ -70,21 +70,12 @@ placeZombieInLane (GameModel sun plants zombies) zombie lane
 
 -}
 
-{- performZombieActions :: GameModel -> Maybe GameModel
-performZombieActions gm@(GameModel s [] zombies)
-  | isGameOver gm = Nothing
-  | otherwise = Just (GameModel s [] (moveZombies zombies))
-performZombieActions (GameModel s plants@(currentPlant@((plantX, plantY), cp):restPlants) zombies@(currentZombie@((zombieX, zombieY), cz):restZombies))
-  | filter (\y -> y == False) (map (\p -> isZombieAbleToMove currentZombie p) plants) == [] = Just (GameModel s plants (moveZombies zombies))
-  | filter (\y -> y == False) (map (\p -> isZombieAbleToMove currentZombie p) plants) /= [] && (isVaultingZombie cz) = Just (GameModel s plants (moveZombiesVaulting zombies))
-  | otherwise = Just (GameModel s (((plantX, plantY), reducePlantHp cp):restPlants) zombies)
-performZombieActions _ = Nothing -}
 
 
 performZombieActions :: GameModel -> Maybe GameModel
 performZombieActions gm@(GameModel s [] zombies)
   | isGameOver gm = Nothing
-  | otherwise = Just (GameModel s [] (moveZombies zombies))
+  | otherwise = Just (GameModel s [] (map (\x -> moveZombie x) zombies))
 performZombieActions (GameModel s plants zombies) = Just (GameModel s (performPlants plants zombies) (performZombies (concat (map (\currentZombie -> map (\currentPlant -> isZombieAbleToMove currentZombie currentPlant) plants) zombies)) zombies))
 
 
@@ -101,23 +92,29 @@ performPlants plants zombies = map (\plant -> performPlant plant zombies) plants
 performPlant :: (Coordinate, Plant) -> [(Coordinate, Zombie)] -> (Coordinate, Plant)
 performPlant plant zombies = reducePlantHp plant (length (filter (\each -> each == False) (map (\currentZombie -> (isZombieAbleToMove currentZombie plant)) zombies)))
 
+
+
 isGameOver :: GameModel -> Bool
 isGameOver (GameModel _ _ []) = False
 isGameOver (GameModel s p (((_, y), _):rest))
   | y <= 0 = True
   | otherwise = isGameOver (GameModel s p rest)
 
-isVaultingZombie :: Zombie -> Bool
-isVaultingZombie (Vaulting _ _) = True
-isVaultingZombie _ = False
 
 isVaultingZombieW :: (Coordinate, Zombie) -> Bool
 isVaultingZombieW (_, (Vaulting _ _ )) = True
 isVaultingZombieW _ = False
 
+vaultingCanJump :: (Coordinate, Zombie) -> Bool
+vaultingCanJump (_, (Vaulting _ speed))
+  | speed > 1 = True
+  | otherwise = False
+vaultingCanJump _ = False
+
+
 isZombieAbleToMove :: (Coordinate, Zombie) -> (Coordinate, Plant) -> Bool
-isZombieAbleToMove (zombieCoords@(zombieX, zombieY), z) (plantCoords@(plantX, plantY), _)
-  | (zombieCoords == plantCoords) && (isVaultingZombie z) = True
+isZombieAbleToMove zombie@(zombieCoords, _) (plantCoords, _)
+  | (zombieCoords == plantCoords) && (isVaultingZombieW zombie) && (vaultingCanJump zombie) = True
   | zombieCoords == plantCoords = False
   | otherwise = True
 
@@ -128,28 +125,10 @@ moveZombie ((x,y), z@(Buckethead _ speed)) = ((x, (y-speed)), z)
 moveZombie ((x,y), z@(Vaulting _ speed)) = ((x, (y-speed)), z)
 
 moveVaulting :: (Coordinate, Zombie) -> (Coordinate, Zombie)
-moveVaulting ((x,y), (Vaulting hp speed))
-  | speed > 1 = ((x, (y-1)), (Vaulting hp (speed-1)))
+moveVaulting zombie@((x,y), (Vaulting hp speed))
+  | vaultingCanJump zombie = ((x, (y-1)), (Vaulting hp (speed-1)))
   | otherwise = ((x, (y-speed)), (Vaulting hp speed))
-moveVaulting (coords, z) = moveZombie (coords, z)
 
-moveZombies :: [(Coordinate, Zombie)] -> [(Coordinate, Zombie)]
-moveZombies z = map (\x -> moveZombie x) z
-
-moveZombiesVaulting :: [(Coordinate, Zombie)] -> [(Coordinate, Zombie)]
-moveZombiesVaulting z = map (\x -> moveVaulting x) z
-
-{- reducePlantHp :: Plant -> Plant
-reducePlantHp (Peashooter hp) = (Peashooter (hp-1))
-reducePlantHp (Sunflower hp) = (Sunflower (hp-1))
-reducePlantHp (Walnut hp) = (Walnut (hp-1))
-reducePlantHp (CherryBomb hp) = (CherryBomb (hp-1)) -}
-
-{- reducePlantHp :: (Coordinate, Plant) -> (Coordinate, Plant)
-reducePlantHp (c,(Peashooter hp)) = (c, (Peashooter (hp-1)))
-reducePlantHp (c, (Sunflower hp)) = (c, (Sunflower (hp-1)))
-reducePlantHp (c, (Walnut hp) )= (c, (Walnut (hp-1)))
-reducePlantHp (c, (CherryBomb hp)) = (c, (CherryBomb (hp-1))) -}
 
 reducePlantHp :: (Coordinate, Plant) -> Int -> (Coordinate, Plant)
 reducePlantHp (c,(Peashooter hp)) amount = (c, (Peashooter (hp-amount)))
