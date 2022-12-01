@@ -23,7 +23,7 @@ defaultWalnut :: Plant
 defaultWalnut = Walnut 15
 
 defaultCherryBomb :: Plant
-defaultCherryBomb = CherryBomb 2
+defaultCherryBomb = CherryBomb 0
 
 basic :: Zombie
 basic = Basic 5 1
@@ -60,14 +60,12 @@ placeZombieInLane (GameModel sun plants zombies) zombie lane
   | otherwise = Nothing
 
 
+
 performZombieActions :: GameModel -> Maybe GameModel
 performZombieActions gm@(GameModel s [] zombies)
   | isGameOver gm = Nothing
   | otherwise = Just (GameModel s [] (map (\x -> moveZombie x) zombies))
 performZombieActions (GameModel s plants zombies) = Just (GameModel s (performPlants plants zombies) (performZombies (map (\currentZombie -> map (\currentPlant -> isZombieAbleToMove currentZombie currentPlant) plants) zombies) zombies))
-
-
-
 
 
 performZombies :: [[Int]] -> [(Coordinate, Zombie)] -> [(Coordinate, Zombie)]
@@ -106,6 +104,7 @@ vaultingCanJump (_, (Vaulting _ speed))
   | otherwise = False
 vaultingCanJump _ = False
 
+
 shouldZombieAttack :: (Coordinate, Zombie) -> (Coordinate, Plant) -> Bool
 shouldZombieAttack zombie@(zombieCoords, _) (plantCoords, _)
   | (zombieCoords == plantCoords) && (isVaultingZombie zombie) && (vaultingCanJump zombie) = False
@@ -118,7 +117,6 @@ isZombieAbleToMove zombie@(zombieCoords, _) plant@(plantCoords, _)
   | zombieCoords == plantCoords = 0 -- cant move -> attack
   | isPlantInPath zombie plant = 2 -- can move but plant is in path
   | otherwise = 3 -- canMove
-
 
 isPlantInPath :: (Coordinate, Zombie) -> (Coordinate, Plant) -> Bool
 isPlantInPath ((zX, zY), (Vaulting _ speed)) ((pX, pY), _) = ((zY-1) == pY) && (zX == pX)
@@ -168,7 +166,6 @@ removeDeadPlants [] = []
 removeDeadPlants ((coords, plant):rest)
   | isPlantDead plant = removeDeadPlants rest
   | otherwise = (coords, plant) : removeDeadPlants rest
-
 
 
 cleanBoard :: GameModel -> GameModel
