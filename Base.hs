@@ -60,18 +60,6 @@ placeZombieInLane (GameModel sun plants zombies) zombie lane
   | otherwise = Nothing
 
 
-{- 
-  performZombieActions (GameModel 0 [] [((0,0), coneHead)]) == Nothing
-  performZombieActions (GameModel 0 [] [((0,1), coneHead)]) == Just (GameModel 0 [] [((0,0), coneHead)])
-  performZombieActions (GameModel 0 [((0,1), defaultWalnut)] [((0,1), coneHead)]) == Just (GameModel 0 [((0,1), Walnut 14)] [((0,1), coneHead)])
-  performZombieActions (GameModel 0 [((0,1), defaultWalnut)] [((0,1), vaulting)]) == Just (GameModel 0 [((0,1), defaultWalnut)] [((0,0), Vaulting 7 1)])
-
-  performZombieActions (GameModel 0 [((4,2),Sunflower 5)] [((a,b),c)|a<-[0,2,4],b<-[2,3,7,11],c<-[coneHead,basic,bucketHead,vaulting]])==Just (GameModel 0 [((4,2),Sunflower 2)] [((0,1),Conehead 10 1),((0,1),Basic 5 1),((0,1),Buckethead 20 1),((0,0),Vaulting 7 2),((0,2),Conehead 10 1),((0,2),Basic 5 1),((0,2),Buckethead 20 1),((0,1),Vaulting 7 2),((0,6),Conehead 10 1),((0,6),Basic 5 1),((0,6),Buckethead 20 1),((0,5),Vaulting 7 2),((0,10),Conehead 10 1),((0,10),Basic 5 1),((0,10),Buckethead 20 1),((0,9),Vaulting 7 2),((2,1),Conehead 10 1),((2,1),Basic 5 1),((2,1),Buckethead 20 1),((2,0),Vaulting 7 2),((2,2),Conehead 10 1),((2,2),Basic 5 1),((2,2),Buckethead 20 1),((2,1),Vaulting 7 2),((2,6),Conehead 10 1),((2,6),Basic 5 1),((2,6),Buckethead 20 1),((2,5),Vaulting 7 2),((2,10),Conehead 10 1),((2,10),Basic 5 1),((2,10),Buckethead 20 1),((2,9),Vaulting 7 2),((4,2),Conehead 10 1),((4,2),Basic 5 1),((4,2),Buckethead 20 1),((4,1),Vaulting 7 1),((4,2),Conehead 10 1),((4,2),Basic 5 1),((4,2),Buckethead 20 1),((4,1),Vaulting 7 1),((4,6),Conehead 10 1),((4,6),Basic 5 1),((4,6),Buckethead 20 1),((4,5),Vaulting 7 2),((4,10),Conehead 10 1),((4,10),Basic 5 1),((4,10),Buckethead 20 1),((4,9),Vaulting 7 2)])
-
--}
-
-
-
 performZombieActions :: GameModel -> Maybe GameModel
 performZombieActions gm@(GameModel s [] zombies)
   | isGameOver gm = Nothing
@@ -79,12 +67,12 @@ performZombieActions gm@(GameModel s [] zombies)
 performZombieActions (GameModel s plants zombies) = Just (GameModel s (performPlants plants zombies) (performZombies (concat (map (\currentZombie -> map (\currentPlant -> isZombieAbleToMove currentZombie currentPlant) plants) zombies)) zombies))
 
 
-performZombies :: [Bool] -> [(Coordinate, Zombie)] -> [(Coordinate, Zombie)]
+performZombies :: [Int] -> [(Coordinate, Zombie)] -> [(Coordinate, Zombie)]
 performZombies [] _ = []
-performZombies (cBool:rBools) (cZombie:rZombies)
-  | cBool = (moveZombie cZombie) : performZombies rBools rZombies
-  | (not (cBool)) && (isVaultingZombieW cZombie) = (moveVaulting cZombie) : performZombies rBools rZombies
-  | otherwise = cZombie : performZombies rBools rZombies
+performZombies (cInt:rInts) (cZombie:rZombies)
+  | cInt == 3 = (moveZombie cZombie) : performZombies rInts rZombies
+  | cInt /= 0 = (moveVaulting cZombie cInt) : performZombies rInts rZombies
+  | otherwise = cZombie : performZombies rInts rZombies
 
 performPlants :: [(Coordinate, Plant)] -> [(Coordinate, Zombie)] -> [(Coordinate, Plant)]
 performPlants plants zombies = map (\plant -> performPlant plant zombies) plants
@@ -100,9 +88,9 @@ isGameOver (GameModel s p (((_, y), _):rest))
   | otherwise = isGameOver (GameModel s p rest)
 
 
-isVaultingZombieW :: (Coordinate, Zombie) -> Bool
-isVaultingZombieW (_, (Vaulting _ _ )) = True
-isVaultingZombieW _ = False
+isVaultingZombie :: (Coordinate, Zombie) -> Bool
+isVaultingZombie (_, (Vaulting _ _ )) = True
+isVaultingZombie _ = False
 
 vaultingCanJump :: (Coordinate, Zombie) -> Bool
 vaultingCanJump (_, (Vaulting _ speed))
@@ -112,15 +100,21 @@ vaultingCanJump _ = False
 
 shouldZombieAttack :: (Coordinate, Zombie) -> (Coordinate, Plant) -> Bool
 shouldZombieAttack zombie@(zombieCoords, _) (plantCoords, _)
-  | (zombieCoords == plantCoords) && (isVaultingZombieW zombie) && (vaultingCanJump zombie) = False
+  | (zombieCoords == plantCoords) && (isVaultingZombie zombie) && (vaultingCanJump zombie) = False
   | zombieCoords == plantCoords = True
   | otherwise = False
 
+isZombieAbleToMove :: (Coordinate, Zombie) -> (Coordinate, Plant) -> Int
+isZombieAbleToMove zombie@(zombieCoords, _) plant@(plantCoords, _)
+  | (zombieCoords == plantCoords) && (isVaultingZombie zombie) = 1 -- is standing but can jump
+  | zombieCoords == plantCoords = 0 -- cant move -> attack
+  | isPlantInPath zombie plant = 2 -- can move but plant is in path
+  | otherwise = 3 -- canMove
 
-isZombieAbleToMove :: (Coordinate, Zombie) -> (Coordinate, Plant) -> Bool
-isZombieAbleToMove zombie@(zombieCoords, _) (plantCoords, _)
-  | zombieCoords == plantCoords = False
-  | otherwise = True
+
+isPlantInPath :: (Coordinate, Zombie) -> (Coordinate, Plant) -> Bool
+isPlantInPath ((zX, zY), (Vaulting _ speed)) ((pX, pY), _) = ((zY-1) == pY) && (zX == pX)
+isPlantInPath _ _ = False
 
 moveZombie :: (Coordinate, Zombie) -> (Coordinate, Zombie)
 moveZombie ((x,y), z@(Basic _ speed)) = ((x, (y-speed)), z)
@@ -128,9 +122,10 @@ moveZombie ((x,y), z@(Conehead _ speed)) = ((x, (y-speed)), z)
 moveZombie ((x,y), z@(Buckethead _ speed)) = ((x, (y-speed)), z)
 moveZombie ((x,y), z@(Vaulting _ speed)) = ((x, (y-speed)), z)
 
-moveVaulting :: (Coordinate, Zombie) -> (Coordinate, Zombie)
-moveVaulting zombie@((x,y), (Vaulting hp speed))
-  | vaultingCanJump zombie = ((x, (y-1)), (Vaulting hp (speed-1)))
+moveVaulting :: (Coordinate, Zombie) -> Int -> (Coordinate, Zombie)
+moveVaulting zombie@((x,y), (Vaulting hp speed)) jump
+  | jump == 2 = ((x, (y-speed)), (Vaulting hp (speed-1)))
+  | jump == 1 = ((x, (y-1)), (Vaulting hp (speed-1)))
   | otherwise = ((x, (y-speed)), (Vaulting hp speed))
 
 
