@@ -85,10 +85,8 @@ performZombieActions :: GameModel -> Maybe GameModel
 performZombieActions gm@(GameModel s [] zombies)
   | isGameOver gm = Nothing
   | otherwise = Just (GameModel s [] (moveZombies zombies))
-performZombieActions (GameModel s plants zombies) = Just (GameModel s plants (performZombies (concat (map (\currentZombie -> map (\currentPlant -> isZombieAbleToMove currentZombie currentPlant) plants) zombies)) zombies))
+performZombieActions (GameModel s plants zombies) = Just (GameModel s (performPlants plants zombies) (performZombies (concat (map (\currentZombie -> map (\currentPlant -> isZombieAbleToMove currentZombie currentPlant) plants) zombies)) zombies))
 
-
-t_test (GameModel s plants zombies) = performZombies (concat (map (\currentZombie -> map (\currentPlant -> isZombieAbleToMove currentZombie currentPlant) plants) zombies)) zombies
 
 performZombies :: [Bool] -> [(Coordinate, Zombie)] -> [(Coordinate, Zombie)]
 performZombies [] _ = []
@@ -97,9 +95,11 @@ performZombies (cBool:rBools) (cZombie:rZombies)
   | (not (cBool)) && (isVaultingZombieW cZombie) = (moveVaulting cZombie) : performZombies rBools rZombies
   | otherwise = cZombie : performZombies rBools rZombies
 
-performReducePlantHp :: [Bool] -> [(Coordinate, Plant)] -> [(Coordinate, Plant)]
-performReducePlantHp [] _ = []
-performReducePlantHp (cBool:rBools) (cPlant:cPlants)
+performPlants :: [(Coordinate, Plant)] -> [(Coordinate, Zombie)] -> [(Coordinate, Plant)]
+performPlants plants zombies = map (\plant -> performPlant plant zombies) plants
+
+performPlant :: (Coordinate, Plant) -> [(Coordinate, Zombie)] -> (Coordinate, Plant)
+performPlant plant zombies = reducePlantHp plant (length (filter (\each -> each == False) (map (\currentZombie -> (isZombieAbleToMove currentZombie plant)) zombies)))
 
 isGameOver :: GameModel -> Bool
 isGameOver (GameModel _ _ []) = False
@@ -117,8 +117,8 @@ isVaultingZombieW _ = False
 
 isZombieAbleToMove :: (Coordinate, Zombie) -> (Coordinate, Plant) -> Bool
 isZombieAbleToMove (zombieCoords@(zombieX, zombieY), z) (plantCoords@(plantX, plantY), _)
-  | zombieCoords == plantCoords = False
   | (zombieCoords == plantCoords) && (isVaultingZombie z) = True
+  | zombieCoords == plantCoords = False
   | otherwise = True
 
 moveZombie :: (Coordinate, Zombie) -> (Coordinate, Zombie)
@@ -139,17 +139,29 @@ moveZombies z = map (\x -> moveZombie x) z
 moveZombiesVaulting :: [(Coordinate, Zombie)] -> [(Coordinate, Zombie)]
 moveZombiesVaulting z = map (\x -> moveVaulting x) z
 
-reducePlantHp :: Plant -> Plant
+{- reducePlantHp :: Plant -> Plant
 reducePlantHp (Peashooter hp) = (Peashooter (hp-1))
 reducePlantHp (Sunflower hp) = (Sunflower (hp-1))
 reducePlantHp (Walnut hp) = (Walnut (hp-1))
-reducePlantHp (CherryBomb hp) = (CherryBomb (hp-1))
+reducePlantHp (CherryBomb hp) = (CherryBomb (hp-1)) -}
 
 {- reducePlantHp :: (Coordinate, Plant) -> (Coordinate, Plant)
 reducePlantHp (c,(Peashooter hp)) = (c, (Peashooter (hp-1)))
 reducePlantHp (c, (Sunflower hp)) = (c, (Sunflower (hp-1)))
 reducePlantHp (c, (Walnut hp) )= (c, (Walnut (hp-1)))
 reducePlantHp (c, (CherryBomb hp)) = (c, (CherryBomb (hp-1))) -}
+
+reducePlantHp :: (Coordinate, Plant) -> Int -> (Coordinate, Plant)
+reducePlantHp (c,(Peashooter hp)) amount = (c, (Peashooter (hp-amount)))
+reducePlantHp (c, (Sunflower hp)) amount = (c, (Sunflower (hp-amount)))
+reducePlantHp (c, (Walnut hp) ) amount = (c, (Walnut (hp-amount)))
+reducePlantHp (c, (CherryBomb hp)) amount = (c, (CherryBomb (hp-amount)))
+
+
+
+
+
+
 
 
 
