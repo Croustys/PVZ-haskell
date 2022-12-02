@@ -65,7 +65,7 @@ performZombieActions :: GameModel -> Maybe GameModel
 performZombieActions gm@(GameModel s [] zombies)
   | isGameOver gm = Nothing
   | otherwise = Just (GameModel s [] (map (\x -> moveZombie x) zombies))
-performZombieActions (GameModel s plants zombies) = Just (GameModel s (performPlants plants zombies) (performZombies (map (\currentZombie -> map (\currentPlant -> isZombieAbleToMove currentZombie currentPlant) plants) zombies) zombies))
+performZombieActions (GameModel s plants zombies) = Just (GameModel s (damagePlants plants zombies) (performZombies (map (\currentZombie -> map (\currentPlant -> isZombieAbleToMove currentZombie currentPlant) plants) zombies) zombies))
 
 
 performZombies :: [[Int]] -> [(Coordinate, Zombie)] -> [(Coordinate, Zombie)]
@@ -80,11 +80,11 @@ performZombie l zombie
   | otherwise = moveZombie zombie
 
 
-performPlants :: [(Coordinate, Plant)] -> [(Coordinate, Zombie)] -> [(Coordinate, Plant)]
-performPlants plants zombies = map (\plant -> performPlant plant zombies) plants
+damagePlants :: [(Coordinate, Plant)] -> [(Coordinate, Zombie)] -> [(Coordinate, Plant)]
+damagePlants plants zombies = map (\plant -> damagePlant plant zombies) plants
 
-performPlant :: (Coordinate, Plant) -> [(Coordinate, Zombie)] -> (Coordinate, Plant)
-performPlant plant zombies = reducePlantHp plant (length (filter (\each -> each == True) (map (\currentZombie -> (shouldZombieAttack currentZombie plant)) zombies)))
+damagePlant :: (Coordinate, Plant) -> [(Coordinate, Zombie)] -> (Coordinate, Plant)
+damagePlant plant zombies = reducePlantHp plant (length (filter (\each -> each == True) (map (\currentZombie -> (shouldZombieAttack currentZombie plant)) zombies)))
 
 
 isGameOver :: GameModel -> Bool
@@ -170,3 +170,26 @@ removeDeadPlants ((coords, plant):rest)
 
 cleanBoard :: GameModel -> GameModel
 cleanBoard (GameModel s plants zombies) = (GameModel s (removeDeadPlants plants) (removeDeadZombies zombies))
+
+
+
+{- 
+  performPlantActions (GameModel 0 (replicate 5 ((0,0), defaultSunflower)) []) == GameModel 125 (replicate 5 ((0,0), defaultSunflower)) []
+  performPlantActions (GameModel 0 [((0,0), defaultPeashooter)] [((0,3), coneHead)]) == GameModel 0 [((0,0), defaultPeashooter)] [((0,3), Conehead 9 1)]
+  performPlantActions (GameModel 0 [((3,3), defaultCherryBomb )] [((2,2), bucketHead)]) == GameModel 0 [((3,3),CherryBomb (-1))] [((2,2),Buckethead (-1) 1)]
+-}
+performPlantActions :: GameModel -> GameModel
+performPlantActions (GameModel s plants []) = (GameModel (s+(getSunflowers plants)) plants [])
+
+performPlant :: [(Coordinate, Plant)] -> [(Coordinate, Plant)]
+
+getSunflowers :: [(Coordinate, Plant)] -> Int
+getSunflowers [] = 0
+getSunflowers ((_, Sunflower _):rest) = 25 + getSunflowers rest
+getSunflowers (_:rest) = getSunflowers rest
+
+reduceZombieHp :: (Coordinate, Zombie) -> (Coordinate, Zombie)
+reduceZombieHp (coords,(Basic hp s)) = (coords, (Basic hp (s-1)))
+reduceZombieHp (coords,(Conehead hp s)) = (coords, (Conehead hp (s-1)))
+reduceZombieHp (coords,(Buckethead hp s)) = (coords, (Buckethead hp (s-1)))
+reduceZombieHp (coords,(Vaulting hp s)) = (coords, (Vaulting hp (s-1)))
