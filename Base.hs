@@ -180,16 +180,66 @@ cleanBoard (GameModel s plants zombies) = (GameModel s (removeDeadPlants plants)
 -}
 performPlantActions :: GameModel -> GameModel
 performPlantActions (GameModel s plants []) = (GameModel (s+(getSunflowers plants)) plants [])
+performPlantActions (GameModel s plants zombies) = (GameModel (s+getSunflowers plants) (performPlants plants) (damageZombies plants zombies))
 
-performPlant :: [(Coordinate, Plant)] -> [(Coordinate, Plant)]
+
+performPlants :: [(Coordinate, Plant)] -> [(Coordinate, Plant)]
+performPlants [] = []
+performPlants (cPlant:rPlants)
+  | isCherrybomb cPlant = (killCherrybomb cPlant) : performPlants rPlants
+  | otherwise = cPlant : performPlants rPlants
+
+damageZombies :: [(Coordinate, Plant)] -> [(Coordinate, Zombie)] -> [(Coordinate, Zombie)]
+damageZombies _ [] = []
+damageZombies plants (cZombie:rZombies)
+  | filter (==2) (map (\plant -> damageZombie plant cZombie) plants) /= [] = (killZombie cZombie) : damageZombies plants rZombies
+  | filter (==1) (map (\plant -> damageZombie plant cZombie) plants) /= [] = (reduceZombieHp cZombie (length (filter (==1) (map (\plant -> damageZombie plant cZombie) plants)))) : damageZombies plants rZombies
+  | otherwise = cZombie : damageZombies plants rZombies
+
+damageZombie :: (Coordinate, Plant) -> (Coordinate, Zombie) -> Int
+damageZombie plant@(plantCoords@(plantX, plantY), _) zombie@(zombieCoords@(zombieX, zombieY), _)
+  | (isPeashooter plant) && (plantX == zombieX) && (zombieY >= plantY) = 1
+  | (isCherrybomb plant) && isInCherrybombRange plantCoords zombieCoords = 2
+  | otherwise = 0
+  
+
+isInCherrybombRange :: Coordinate -> Coordinate -> Bool
+isInCherrybombRange plantCoords@(plantX, plantY) zombieCoords@(zombieX, zombieY)
+  | plantCoords == zombieCoords = True
+  | (plantX-1 == zombieX && plantY-1 == zombieY) || (plantX-1 == zombieX && plantY == zombieY) || (plantX-1 == zombieX && plantY+1 == zombieY) || (plantX == zombieX && plantY-1 == zombieY) || (plantX == zombieX && plantY+1 == zombieY) || (plantX+1 == zombieX && plantY-1 == zombieY) || (plantX+1 == zombieX && plantY == zombieY) || (plantX+1 == zombieX && plantY+1 == zombieY) = True
+  | otherwise = False
+
+
+-- visual rep. of cheerybomb radius
+-- (x-1, y-1) (x-1, y) (x-1, y+1)
+-- (x, y-1) c (x, y+1)
+-- (x+1, y-1) (x+1, y) (x+1, y+1)
+
+isPeashooter :: (Coordinate, Plant) -> Bool
+isPeashooter (_, (Peashooter _)) = True
+isPeashooter _ = False
+
+isCherrybomb :: (Coordinate, Plant) -> Bool
+isCherrybomb (_, (CherryBomb _)) = True
+isCherrybomb _ = False
 
 getSunflowers :: [(Coordinate, Plant)] -> Int
 getSunflowers [] = 0
 getSunflowers ((_, Sunflower _):rest) = 25 + getSunflowers rest
 getSunflowers (_:rest) = getSunflowers rest
 
-reduceZombieHp :: (Coordinate, Zombie) -> (Coordinate, Zombie)
-reduceZombieHp (coords,(Basic hp s)) = (coords, (Basic hp (s-1)))
-reduceZombieHp (coords,(Conehead hp s)) = (coords, (Conehead hp (s-1)))
-reduceZombieHp (coords,(Buckethead hp s)) = (coords, (Buckethead hp (s-1)))
-reduceZombieHp (coords,(Vaulting hp s)) = (coords, (Vaulting hp (s-1)))
+killCherrybomb :: (Coordinate, Plant) -> (Coordinate, Plant)
+killCherrybomb (coords, (CherryBomb hp)) = (coords, (CherryBomb (-1)))
+
+
+killZombie :: (Coordinate, Zombie) -> (Coordinate, Zombie)
+killZombie (coords,(Basic hp s)) = (coords, (Basic 0 s))
+killZombie (coords,(Conehead hp s)) = (coords, (Conehead 0 s))
+killZombie (coords,(Buckethead hp s)) = (coords, (Buckethead 0 s))
+killZombie (coords,(Vaulting hp s)) = (coords, (Vaulting 0 s))
+
+reduceZombieHp :: (Coordinate, Zombie) -> Int -> (Coordinate, Zombie)
+reduceZombieHp (coords,(Basic hp s)) amount = (coords, (Basic (hp-amount) s))
+reduceZombieHp (coords,(Conehead hp s)) amount = (coords, (Conehead (hp-amount) s))
+reduceZombieHp (coords,(Buckethead hp s)) amount = (coords, (Buckethead (hp-amount) s))
+reduceZombieHp (coords,(Vaulting hp s)) amount = (coords, (Vaulting (hp-amount) s))
