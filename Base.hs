@@ -23,7 +23,7 @@ defaultWalnut :: Plant
 defaultWalnut = Walnut 15
 
 defaultCherryBomb :: Plant
-defaultCherryBomb = CherryBomb 0
+defaultCherryBomb = CherryBomb 2
 
 basic :: Zombie
 basic = Basic 5 1
@@ -173,14 +173,9 @@ cleanBoard (GameModel s plants zombies) = (GameModel s (removeDeadPlants plants)
 
 
 
-{- 
-  performPlantActions (GameModel 0 (replicate 5 ((0,0), defaultSunflower)) []) == GameModel 125 (replicate 5 ((0,0), defaultSunflower)) []
-  performPlantActions (GameModel 0 [((0,0), defaultPeashooter)] [((0,3), coneHead)]) == GameModel 0 [((0,0), defaultPeashooter)] [((0,3), Conehead 9 1)]
-  performPlantActions (GameModel 0 [((3,3), defaultCherryBomb )] [((2,2), bucketHead)]) == GameModel 0 [((3,3),CherryBomb (-1))] [((2,2),Buckethead (-1) 1)]
--}
 performPlantActions :: GameModel -> GameModel
 performPlantActions (GameModel s plants []) = (GameModel (s+(getSunflowers plants)) plants [])
-performPlantActions (GameModel s plants zombies) = (GameModel (s+getSunflowers plants) (performPlants plants) (damageZombies plants zombies))
+performPlantActions (GameModel s plants zombies) = (GameModel (s+getSunflowers plants) (performPlants plants) (damageZombies plants zombies zombies))
 
 
 performPlants :: [(Coordinate, Plant)] -> [(Coordinate, Plant)]
@@ -189,31 +184,40 @@ performPlants (cPlant:rPlants)
   | isCherrybomb cPlant = (killCherrybomb cPlant) : performPlants rPlants
   | otherwise = cPlant : performPlants rPlants
 
-damageZombies :: [(Coordinate, Plant)] -> [(Coordinate, Zombie)] -> [(Coordinate, Zombie)]
-damageZombies _ [] = []
-damageZombies plants (cZombie:rZombies)
-  | filter (==2) (map (\plant -> damageZombie plant cZombie) plants) /= [] = (killZombie cZombie) : damageZombies plants rZombies
-  | filter (==1) (map (\plant -> damageZombie plant cZombie) plants) /= [] = (reduceZombieHp cZombie (length (filter (==1) (map (\plant -> damageZombie plant cZombie) plants)))) : damageZombies plants rZombies
-  | otherwise = cZombie : damageZombies plants rZombies
 
-damageZombie :: (Coordinate, Plant) -> (Coordinate, Zombie) -> Int
-damageZombie plant@(plantCoords@(plantX, plantY), _) zombie@(zombieCoords@(zombieX, zombieY), _)
-  | (isPeashooter plant) && (plantX == zombieX) && (zombieY >= plantY) = 1
+damageZombies :: [(Coordinate, Plant)] -> [(Coordinate, Zombie)] -> [(Coordinate, Zombie)] -> [(Coordinate, Zombie)]
+damageZombies _ [] _ = []
+damageZombies plants zombies@(cZombie:rZombies) allZombies
+  | filter (==2) (map (\plant -> damageZombie plant cZombie ((0, 0))) plants) /= [] = (killZombie cZombie) : damageZombies plants rZombies allZombies
+  | filter (==1) (map (\plant -> damageZombie plant cZombie (closesZombieToPlant allZombies plant)) plants) /= [] = (reduceZombieHp cZombie (length (filter (==1) (map (\plant -> damageZombie plant cZombie (closesZombieToPlant allZombies plant)) plants)))) : damageZombies plants rZombies allZombies
+  | otherwise = cZombie : damageZombies plants rZombies allZombies
+
+
+damageZombie :: (Coordinate, Plant) -> (Coordinate, Zombie) -> Coordinate -> Int
+damageZombie plant@(plantCoords@(plantX, plantY), _) zombie@(zombieCoords@(zombieX, zombieY), _) closestCoords
+  | (isPeashooter plant) && zombieCoords == closestCoords = 1
   | (isCherrybomb plant) && isInCherrybombRange plantCoords zombieCoords = 2
   | otherwise = 0
   
+closesZombieToPlant :: [(Coordinate, Zombie)] -> (Coordinate, Plant) -> Coordinate
+closesZombieToPlant zombies (plantCoords, _) = findClosest (getZombieCoords zombies) plantCoords
 
-isInCherrybombRange :: Coordinate -> Coordinate -> Bool
-isInCherrybombRange plantCoords@(plantX, plantY) zombieCoords@(zombieX, zombieY)
-  | plantCoords == zombieCoords = True
-  | (plantX-1 == zombieX && plantY-1 == zombieY) || (plantX-1 == zombieX && plantY == zombieY) || (plantX-1 == zombieX && plantY+1 == zombieY) || (plantX == zombieX && plantY-1 == zombieY) || (plantX == zombieX && plantY+1 == zombieY) || (plantX+1 == zombieX && plantY-1 == zombieY) || (plantX+1 == zombieX && plantY == zombieY) || (plantX+1 == zombieX && plantY+1 == zombieY) = True
-  | otherwise = False
+findClosest :: [Coordinate] -> Coordinate -> Coordinate
+findClosest zombieCoords (plantX, plantY) = (plantX, foldr1 min (map snd (filter (\(x, y) -> (x == plantX) && (y >= plantY)) zombieCoords)))
+
+getZombieCoords :: [(Coordinate, Zombie)] -> [Coordinate]
+getZombieCoords [] = []
+getZombieCoords ((c, _):rest) = c : getZombieCoords rest
 
 
 -- visual rep. of cheerybomb radius
 -- (x-1, y-1) (x-1, y) (x-1, y+1)
 -- (x, y-1) c (x, y+1)
 -- (x+1, y-1) (x+1, y) (x+1, y+1)
+
+isInCherrybombRange :: Coordinate -> Coordinate -> Bool
+isInCherrybombRange plantCoords@(plantX, plantY) zombieCoords@(zombieX, zombieY) = (plantCoords == zombieCoords) || (plantX-1 == zombieX && plantY-1 == zombieY) || (plantX-1 == zombieX && plantY == zombieY) || (plantX-1 == zombieX && plantY+1 == zombieY) || (plantX == zombieX && plantY-1 == zombieY) || (plantX == zombieX && plantY+1 == zombieY) || (plantX+1 == zombieX && plantY-1 == zombieY) || (plantX+1 == zombieX && plantY == zombieY) || (plantX+1 == zombieX && plantY+1 == zombieY)
+
 
 isPeashooter :: (Coordinate, Plant) -> Bool
 isPeashooter (_, (Peashooter _)) = True
@@ -229,7 +233,7 @@ getSunflowers ((_, Sunflower _):rest) = 25 + getSunflowers rest
 getSunflowers (_:rest) = getSunflowers rest
 
 killCherrybomb :: (Coordinate, Plant) -> (Coordinate, Plant)
-killCherrybomb (coords, (CherryBomb hp)) = (coords, (CherryBomb (-1)))
+killCherrybomb (coords, (CherryBomb hp)) = (coords, (CherryBomb 0))
 
 
 killZombie :: (Coordinate, Zombie) -> (Coordinate, Zombie)
