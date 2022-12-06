@@ -247,3 +247,22 @@ reduceZombieHp (coords,(Basic hp s)) amount = (coords, (Basic (hp-amount) s))
 reduceZombieHp (coords,(Conehead hp s)) amount = (coords, (Conehead (hp-amount) s))
 reduceZombieHp (coords,(Buckethead hp s)) amount = (coords, (Buckethead (hp-amount) s))
 reduceZombieHp (coords,(Vaulting hp s)) amount = (coords, (Vaulting (hp-amount) s))
+
+
+{- tests:
+defendsAgainst (GameModel 0 (map (\x -> ((x,0), Peashooter 2)) [0..4]) []) [map (\x -> (x, basic)) [0..4]]
+
+not $ defendsAgainst (GameModel 0 (map (\x -> ((x,0), Peashooter 2)) [0..4]) []) [map (\x -> (x, bucketHead)) [0..4]]
+
+defendsAgainst (GameModel 0 (map (\x -> ((x,0), Peashooter 2)) [0..4]) []) $ (map (\x -> (x, coneHead)) [0..4]) : (replicate 10 [] ++ [map (\x -> (x, coneHead)) [0..4]])
+
+ -}
+
+{- defendsAgainst :: GameModel -> [[(Int, Zombie)]] -> Bool
+defendsAgainst _ [] = True
+defendsAgainst gm@(GameModel s plants _) allZombies@(cZombies:rZombies)
+  | isGameOver (removeMaybe (performZombieActions (cleanBoard (performPlantActions (GameModel s plants cZombies))))) = False
+  | otherwise = defendsAgainst (removeMaybe (performZombieActions (cleanBoard (performPlantActions (GameModel s plants cZombies))))) rZombies
+
+removeMaybe :: Maybe a -> a
+removeMaybe (Just a) = a -}
