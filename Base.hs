@@ -203,7 +203,9 @@ closesZombieToPlant :: [(Coordinate, Zombie)] -> (Coordinate, Plant) -> Coordina
 closesZombieToPlant zombies (plantCoords, _) = findClosest (getZombieCoords zombies) plantCoords
 
 findClosest :: [Coordinate] -> Coordinate -> Coordinate
-findClosest zombieCoords (plantX, plantY) = (plantX, foldr1 min (map snd (filter (\(x, y) -> (x == plantX) && (y >= plantY)) zombieCoords)))
+findClosest zombieCoords (plantX, plantY)
+  | (map snd (filter (\(x, y) -> (x == plantX) && (y >= plantY)) zombieCoords)) /= [] = (plantX, foldr1 min (map snd (filter (\(x, y) -> (x == plantX) && (y >= plantY)) zombieCoords)))
+  | otherwise = (plantX, plantY)
 
 getZombieCoords :: [(Coordinate, Zombie)] -> [Coordinate]
 getZombieCoords [] = []
@@ -249,14 +251,6 @@ reduceZombieHp (coords,(Buckethead hp s)) amount = (coords, (Buckethead (hp-amou
 reduceZombieHp (coords,(Vaulting hp s)) amount = (coords, (Vaulting (hp-amount) s))
 
 
-{- tests:
-defendsAgainst (GameModel 0 (map (\x -> ((x,0), Peashooter 2)) [0..4]) []) [map (\x -> (x, basic)) [0..4]]
-
-not $ defendsAgainst (GameModel 0 (map (\x -> ((x,0), Peashooter 2)) [0..4]) []) [map (\x -> (x, bucketHead)) [0..4]]
-
-defendsAgainst (GameModel 0 (map (\x -> ((x,0), Peashooter 2)) [0..4]) []) $ (map (\x -> (x, coneHead)) [0..4]) : (replicate 10 [] ++ [map (\x -> (x, coneHead)) [0..4]])
-
- -}
 
 defendsAgainst :: GameModel -> [[(Int, Zombie)]] -> Bool
 defendsAgainst gm@(GameModel s plants originalZs) [] = runWithoutNewZombies gm
