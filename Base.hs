@@ -259,10 +259,16 @@ defendsAgainst (GameModel 0 (map (\x -> ((x,0), Peashooter 2)) [0..4]) []) $ (ma
  -}
 
 defendsAgainst :: GameModel -> [[(Int, Zombie)]] -> Bool
-defendsAgainst _ [] = True
+defendsAgainst gm@(GameModel s plants originalZs) [] = runWithoutNewZombies gm
 defendsAgainst gm@(GameModel s plants originalZs) (cZombies:rZombies)
   | isGameOver (removeMaybe (performZombieActions (cleanBoard (performPlantActions (GameModel s plants originalZs))))) = False
   | otherwise = defendsAgainst (placeNewZombies (removeMaybe (performZombieActions (cleanBoard (performPlantActions (GameModel (s+25) plants originalZs))))) cZombies) rZombies
+
+runWithoutNewZombies :: GameModel -> Bool
+runWithoutNewZombies gm@(GameModel s plants zombies)
+  | isGameOver (removeMaybe (performZombieActions (cleanBoard (performPlantActions (GameModel s plants zombies))))) = False
+  | zombies == [] = True
+  | otherwise = runWithoutNewZombies (removeMaybe (performZombieActions (cleanBoard (performPlantActions (GameModel s plants zombies)))))
 
 removeMaybe :: Maybe a -> a
 removeMaybe (Just a) = a
