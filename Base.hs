@@ -258,11 +258,26 @@ defendsAgainst (GameModel 0 (map (\x -> ((x,0), Peashooter 2)) [0..4]) []) $ (ma
 
  -}
 
-{- defendsAgainst :: GameModel -> [[(Int, Zombie)]] -> Bool
+defendsAgainst :: GameModel -> [[(Int, Zombie)]] -> Bool
 defendsAgainst _ [] = True
-defendsAgainst gm@(GameModel s plants _) allZombies@(cZombies:rZombies)
-  | isGameOver (removeMaybe (performZombieActions (cleanBoard (performPlantActions (GameModel s plants cZombies))))) = False
-  | otherwise = defendsAgainst (removeMaybe (performZombieActions (cleanBoard (performPlantActions (GameModel s plants cZombies))))) rZombies
+defendsAgainst gm@(GameModel s plants originalZs) (cZombies:rZombies)
+  | isGameOver (removeMaybe (performZombieActions (cleanBoard (performPlantActions (GameModel s plants originalZs))))) = False
+  | otherwise = defendsAgainst (placeNewZombies (removeMaybe (performZombieActions (cleanBoard (performPlantActions (GameModel (s+25) plants originalZs))))) cZombies) rZombies
 
 removeMaybe :: Maybe a -> a
-removeMaybe (Just a) = a -}
+removeMaybe (Just a) = a
+
+placeNewZombies :: GameModel -> [(Int, Zombie)] -> GameModel
+placeNewZombies gm@(GameModel s p originalZombies) newZombies = (GameModel s p (originalZombies ++ (placeNewZombie gm newZombies)))
+
+placeNewZombie :: GameModel -> [(Int, Zombie)] -> [(Coordinate, Zombie)]
+placeNewZombie _ [] = []
+placeNewZombie gm@(GameModel s p originalZombies) ((lane, zombie):restZombies)
+  | canPlaceZombieInLane gm zombie lane = ((lane, 11), zombie) : placeNewZombie gm restZombies
+  | otherwise = placeNewZombie gm restZombies
+
+canPlaceZombieInLane :: GameModel -> Zombie -> Int -> Bool
+canPlaceZombieInLane (GameModel sun plants zombies) zombie lane
+  | (lane >= 5) || (lane < 0) = False
+  | (lookup (lane, 11) zombies) == Nothing = True
+  | otherwise = False
