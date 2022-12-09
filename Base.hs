@@ -278,6 +278,6 @@ placeNewZombie gm@(GameModel s p originalZombies) ((lane, zombie):restZombies)
 
 canPlaceZombieInLane :: GameModel -> Zombie -> Int -> Bool
 canPlaceZombieInLane (GameModel sun plants zombies) zombie lane
-  | (lane >= 5) || (lane < 0) = False
+  | (lane >= 5) || (lane < 0) = error "Hiba! A pályán kívülre nem helyezhetsz új zombit!"
   | (lookup (lane, 11) zombies) == Nothing = True
-  | otherwise = False
+  | otherwise = error "Hiba! Ezen a mezőn már áll zombi!"
