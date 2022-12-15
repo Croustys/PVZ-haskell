@@ -235,7 +235,7 @@ getSunflowers ((_, Sunflower _):rest) = 25 + getSunflowers rest
 getSunflowers (_:rest) = getSunflowers rest
 
 killCherrybomb :: (Coordinate, Plant) -> (Coordinate, Plant)
-killCherrybomb (coords, (CherryBomb hp)) = (coords, (CherryBomb 0))
+killCherrybomb (coords, (CherryBomb hp)) = (coords, (CherryBomb (-1)))
 
 
 killZombie :: (Coordinate, Zombie) -> (Coordinate, Zombie)
